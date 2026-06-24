@@ -5,19 +5,24 @@
 Given an array `nums` of size `n`, return the majority element. The majority element is the element that appears more than `⌊n / 2⌋` times. You may assume that the majority element always exists in the array.
 
 ```java
+import java.util.HashMap;
+import java.util.Map;
+
 class Solution {
     public int majorityElement(int[] nums) {
-        int candidate = -1;
-        int count = 0;
-
-        for (int num : nums) {
-            if (count == 0) {
-                candidate = num;
-            }
-            count += (num == candidate) ? 1 : -1;
+        Map<Integer, Integer> hashmap = new HashMap<>();
+        int count = nums.length;
+        
+        for (int i = 0; i < nums.length; i++) {
+            hashmap.put(nums[i], hashmap.getOrDefault(nums[i], 0) + 1);
         }
 
-        return candidate;
+        for (Map.Entry<Integer, Integer> entry : hashmap.entrySet()) {
+            if (entry.getValue() > count / 2) {
+                return entry.getKey();
+            }
+        }
+        return -1;
     }
 }
 ```
@@ -26,69 +31,71 @@ class Solution {
 
 # Pattern Used
 
-## Boyer-Moore Voting Algorithm
+## Frequency Counting Pattern (HashMap)
 
 The key idea is:
 
-If we cancel out each occurrence of an element with all the other elements that are different from it, then the majority element will eventually remain.
+Use a data structure to store the frequency of each element as you traverse the array. This allows you to check against the majority condition (`count > n/2`) efficiently.
 
 ```text
-Potential Candidate + Matching element = Increment Count
-Potential Candidate + Mismatching element = Decrement Count
+Map: { Element -> Frequency }
 ```
 
-When the count reaches zero, we pick the current element as the new candidate.
+Instead of re-scanning the array to count occurrences of every unique number, we build the frequency map in one pass.
 
 ---
 
 # How to Derive the Solution
 
-## Step 1: Brute Force (HashMap)
+## Step 1: Brute Force
 
-Use a frequency map to count occurrences of each number.
+For every element, count its occurrences by scanning the entire array.
 
 ```java
-Map<Integer, Integer> map = new HashMap<>();
-for (int num : nums) {
-    map.put(num, map.getOrDefault(num, 0) + 1);
-    if (map.get(num) > nums.length / 2) {
-        return num;
+for (int i = 0; i < n; i++) {
+    int count = 0;
+    for (int j = 0; j < n; j++) {
+        if (nums[j] == nums[i]) count++;
     }
+    if (count > n/2) return nums[i];
 }
 ```
 
 ### Complexity
 
-- Time: O(n)
-- Space: O(n) (Storing up to n/2 elements in the map)
+- Time: O(n²)
+- Space: O(1)
 
 ---
 
-## Step 2: Identify Repeated Work
+## Step 2: Sorting
 
-The HashMap approach is fast, but it uses extra space. Is there a way to find the majority element without storing every unique number?
+Sort the array and the middle element will always be the majority element (since it appears more than half the time).
 
-Since we know one element appears more than **half** the time, it will always "win" a survival-of-the-fittest battle against all other elements combined.
+```java
+Arrays.sort(nums);
+return nums[n/2];
+```
+
+### Complexity
+
+- Time: O(n log n)
+- Space: O(1) or O(n) depending on sort implementation.
 
 ---
 
-## Step 3: Implement Boyer-Moore
+## Step 3: Frequency Counting (HashMap)
 
-We maintain a `candidate` and a `count`.
-- If `count` is 0, we set `candidate` to the current number.
-- If the current number is the same as `candidate`, we increment `count`.
-- Otherwise, we decrement `count`.
-
-The majority element will be the last candidate standing.
+To optimize further, we can sacrifice some space to achieve linear time complexity. By using a HashMap, we can track counts and identify the majority element in $O(n)$ time.
 
 ---
 
 # Mental Model
 
-Imagine a group of people from different parties.
-- If two people from **different** parties meet, they both leave (neutralizing each other).
-- If two people from the **same** party meet, they stay together.
-- Since the majority party has more than 50% of the people, they will always have at least one person remaining at the end, regardless of the order they meet others.
+Imagine you are a teacher counting votes.
+- Every time you see a vote (number), you put a tally mark next to that person's name on a scoreboard.
+- Once you've finished counting all votes, you look at the scoreboard to see who has more than 50% of the total tally marks.
+- The scoreboard (HashMap) allows you to remember counts for everyone simultaneously.
 
 ---
 
@@ -98,54 +105,22 @@ Input:
 
 ```text
 nums = [2, 2, 1, 1, 1, 2, 2]
+n = 7
+Threshold = n/2 = 3
 ```
 
-### Iteration 1
-```text
-num = 2, count = 0
-Candidate = 2, count = 1
-```
+### 1. Build Frequency Map
+- Process **2**: Map = `{2: 1}`
+- Process **2**: Map = `{2: 2}`
+- Process **1**: Map = `{2: 2, 1: 1}`
+- Process **1**: Map = `{2: 2, 1: 2}`
+- Process **1**: Map = `{2: 2, 1: 3}`
+- Process **2**: Map = `{2: 3, 1: 3}`
+- Process **2**: Map = `{2: 4, 1: 3}`
 
-### Iteration 2
-```text
-num = 2, Candidate = 2
-count = 2
-```
-
-### Iteration 3
-```text
-num = 1, Candidate = 2
-count = 1 (2 and 1 neutralized each other)
-```
-
-### Iteration 4
-```text
-num = 1, Candidate = 2
-count = 0 (2 and 1 neutralized each other)
-```
-
-### Iteration 5
-```text
-num = 1, count = 0
-Candidate = 1, count = 1
-```
-
-### Iteration 6
-```text
-num = 2, Candidate = 1
-count = 0
-```
-
-### Iteration 7
-```text
-num = 2, count = 0
-Candidate = 2, count = 1
-```
-
-Result:
-```text
-2
-```
+### 2. Check Frequencies
+- Entry `{2: 4}`: 4 > 3? **Yes**.
+- Return **2**.
 
 ---
 
@@ -153,42 +128,47 @@ Result:
 
 When solving problems, ask:
 
-## Looking for a Frequency "Winner"?
+## Need to Track Frequencies?
 
 Use:
 ```text
-Boyer-Moore Voting Algorithm
+HashMap
+HashSet (for existence)
+Frequency Array (if range is small)
 ```
 
 ---
 
-## Guaranteed Majoriy? (> n/2)
+## Frequency-Based Conditions?
 
 Common clues:
 ```text
 Majority element
-Appears more than half the time
+Top K elements
+Find the duplicate
+First unique element
 ```
 
 ---
 
-## Need O(1) Space?
+## Need O(n) Time?
 
 Think:
 ```text
-Can I neutralize elements to find the survivor?
+Can I use a Map to avoid nested loops?
 ```
 
 ---
 
 # Similar Problems
 
-## Majority Element / Voting Pattern
+## Frequency Counting / HashMap Pattern
 
-1. Majority Element (n/2)
-2. Majority Element II (n/3)
-3. Subarray Sum Equals K (Frequency variant)
-4. Find the Peak Element (Elimination variant)
+1. Majority Element
+2. Contains Duplicate
+3. Top K Frequent Elements
+4. First Unique Character in a String
+5. Subarray Sum Equals K
 
 ---
 
@@ -197,23 +177,23 @@ Can I neutralize elements to find the survivor?
 Whenever you see:
 
 ```text
-Majority element
-Element > n/2 frequency
-O(1) space requirement
-O(n) time requirement
+Count occurrences
+Find the winner
+Element appearing more than X times
+Frequency analysis
 ```
 
 Immediately think:
 
 ```text
-Boyer-Moore Voting Algorithm
+Frequency Counting with HashMap
 ```
 
 For Majority Element specifically:
 
 ```text
-Current element == Candidate ? count++ : count--
-count == 0 ? candidate = current
+Build Map: Map<Value, Count>
+Check entry.getValue() > n/2
 ```
 
 ---
@@ -226,22 +206,22 @@ count == 0 ? candidate = current
 O(n)
 ```
 
-We traverse the array exactly once.
+We traverse the array once to build the map, and then traverse the map (at most $n$ entries) to find the result.
 
 ## Space Complexity
 
 ```text
-O(1)
+O(n)
 ```
 
-We only store the candidate and the count, regardless of the input size.
+In the worst case (if all elements are unique except the majority), the HashMap stores around $n/2$ keys.
 
 ---
 
 # Key Takeaway
 
-Whenever a problem asks for an element that dominates more than half of the space:
+Whenever a problem asks for an element based on its frequency:
 
-"Don't count everyone, just find the survivor."
+"Trading space for speed often leads to a Hash Map solution."
 
-This insight allows us to move from an $O(n)$ space requirement (HashMap) to $O(1)$ space (Voting), which is a common optimization requested in senior engineering interviews.
+This is the core intuition behind the Frequency Counting Pattern.
